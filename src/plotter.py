@@ -27,7 +27,7 @@ for n in range(N):
     p[0, n] = np.sum(x[leg_state[n], n])/np.sum(leg_state[n])
     p[1, n] = np.sum(y[leg_state[n], n])/np.sum(leg_state[n])
     
-p_zmp = zmp.get_zmp(p)
+#p_zmp = zmp.get_zmp(p)
 
 ### Plot ####################################################################
 fig, (axx, axz) = plt.subplots(2, 1)
@@ -36,11 +36,19 @@ fig.set_figwidth(10)
 
 for n in range(4):
     axx.plot(x[n], y[n], label=('x'+str(n)))
-    axz.plot(t, x[n])
-    axz.plot(t, p_zmp[0])
+    axz.plot(t, z[n], label=('xz'+str(n)))
+    for m in range(N):
+        if leg_state[m, n]:
+            c="k"
+        else:
+            c="w"
+        axz.plot(t[m], n/4, "o", color=c)
 
-axx.plot(p_zmp[0], p_zmp[1], label="ZMP")   
+
+#axz.plot(t, p_zmp[0], label="ZMP")
 axx.plot(p[0], p[1], label="COM")
+#axx.plot(p_zmp[0], p_zmp[1], label="ZMP")   
+
 
 # plot a single locus
 #M = 1

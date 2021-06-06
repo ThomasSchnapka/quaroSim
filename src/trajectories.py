@@ -13,7 +13,8 @@ z_op = 0.25    # usual operating hight
 z_s = -0.02    # step hight
 T_c = 1.5      # cycle time
 
-phase = np.array([0.75, 0.5, 0.25, 0.])
+#phase = np.array([0.75, 0.5, 0.25, 0.])
+phase = np.array([0.0, 0.5, 0.0, 0.5])
 support_ratio = 0.8
 stride = 0.05
 swing_spline = hspline([0, 0.5, 1],
