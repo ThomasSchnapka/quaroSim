@@ -1,7 +1,0 @@
-
-ZMP position:
-p_x = c_x - (z_c/g)*dd_c_x
-ZMP acceleration:
-d_p_x = d/dt p_x = dc_x - (z_c/g)*ddd_c_x
-                 = dc_x - (z_c/g)*u_x
-
