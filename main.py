@@ -11,6 +11,25 @@ import time
 import numpy as np
 from src import trajectories as traj
 
+# settings
+create_gif= True   # create GIF of simulation
+max_force = 10      # maximal joint force
+
+# timing parameters
+#dt = 1./250.
+#p.setTimeStep(dt)
+#tsteps = np.arange(0, 5, dt)
+t_end = 6
+N_steps = 750
+dt = t_end/N_steps
+tsteps = np.linspace(0, t_end, N_steps)
+
+# video parameters
+fps = 12
+N_v = int(t_end*fps)
+width = 400
+height = 300
+
 
 # array that maps quaro convention indices to MiniCheetah joint numbering
 jointNumberConversion = np.array(
@@ -18,29 +37,6 @@ jointNumberConversion = np.array(
      [6, 2, 14, 10],
      [4, 0, 12, 8]])
 
-
-
-def get_pos(t):
-    '''
-    returns leg position at timestep t
-
-    Parameters
-    ----------
-    t : float, timestep
-
-    Returns
-    -------
-    pos : 3x4 np.ndarray with local leg positions
-    '''
-    #z = 0.389
-    z = traj.get_z(t)
-    #y = 0.1*np.sin(2.0*np.pi*t)
-    #y = traj.get_y(t)
-    pos = np.zeros((3,4))
-    pos[2] = z
-    return pos
-    
-    
 
 def set_leg_angles(angles):
     '''
@@ -57,7 +53,7 @@ def set_leg_angles(angles):
         jointNumberConversion.flatten(),
         p.POSITION_CONTROL, 
         angles.flatten(),
-        forces=99.*np.ones(12))
+        forces=max_force*np.ones(12))
     
     
 def inverse_kinematics(coordinates):
@@ -109,6 +105,10 @@ def inverse_kinematics(coordinates):
         return angles
     
 
+# caluclate leg positions for whole simulation (closed loop!)
+trotPos = traj.get_optimized_trot(tsteps)
+
+
 # set up simulation
 try:
     p.resetSimulation()
@@ -118,7 +118,7 @@ p.connect(p.GUI)
 p.setGravity(0,0,-9.8)
 p.setAdditionalSearchPath(pd.getDataPath())
 floor = p.loadURDF("plane.urdf")
-robot = p.loadURDF("mini_cheetah_custom/mini_cheetah_no_inertia.urdf", [0,0,0.389])
+robot = p.loadURDF("src/urdf_files/mini_cheetah_no_inertia.urdf", [0,0,0.4])
 
 # set robot color
 numJoints = p.getNumJoints(robot)
@@ -126,20 +126,7 @@ p.changeVisualShape(robot,-1,rgbaColor=[1,1,1,1])
 for j in range(numJoints):
     p.changeVisualShape(robot,j,rgbaColor=[1,1,1,1]) 
     
-# timing parameters
-#dt = 1./250.
-#p.setTimeStep(dt)
-#tsteps = np.arange(0, 5, dt)
-t_end = 3
-N_steps = 750
-dt = t_end/N_steps
-tsteps = np.linspace(0, t_end, N_steps)
-
-# video parameters
-fps = 12
-N_v = int(t_end*fps)
-width = 400
-height = 300
+# image variables
 images = np.zeros((N_v, height, width, 4))
 cnt = 0
 
@@ -153,16 +140,17 @@ for n in range(N_steps):
                                  cameraYaw=50, cameraPitch=-35, 
                                  cameraTargetPosition=robPos)
     # calculate and set position
-    pos = get_pos(t)
+    pos = trotPos[n]
     angles = inverse_kinematics(pos)
     set_leg_angles(angles)
     
     # save image every now and then
-    if(n%(int(N_steps/(t_end*fps))) == 0):
-        viewMatrix = p.computeViewMatrix(robPos, [0.5, 0.2, 0], [0, 0, 1])
-        images[cnt] = p.getCameraImage(width, height, viewMatrix)[2]
-        cnt += 1
-        cnt = np.min((cnt, N_v-1)) # prevent out of bounds 
+    if create_gif:
+        if(n%(int(N_steps/(t_end*fps))) == 0):
+            viewMatrix = p.computeViewMatrix(robPos, [0.5, 0.2, 0], [0, 0, 1])
+            images[cnt] = p.getCameraImage(width, height, viewMatrix)[2]
+            cnt += 1
+            cnt = np.min((cnt, N_v-1)) # prevent out of bounds 
         
     # simulation step
     p.stepSimulation()
@@ -171,10 +159,11 @@ for n in range(N_steps):
 print("simulation finished!")
 
 # create GIF
-print("creating GIF")
-from PIL import Image
-imgs = [Image.fromarray(img.astype(np.uint8)) for img in images]
-imgs[0].save("log.gif", save_all=True, append_images=imgs[1:], fps=fps, loop=0)
+if create_gif:
+    print("creating GIF")
+    from PIL import Image
+    imgs = [Image.fromarray(img.astype(np.uint8)) for img in images]
+    imgs[0].save("log.gif", save_all=True, append_images=imgs[1:], fps=fps, loop=0)
         
         
         

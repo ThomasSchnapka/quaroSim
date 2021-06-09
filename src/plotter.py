@@ -17,9 +17,9 @@ leg_pos = np.array([[0.2, 0.2, -0.2, -0.2],
                     [0, 0, 0, 0]])
 
 # get leg trajectories
-x = traj.get_x_trot(t) + np.tile(leg_pos[0], (N, 1)).T
+x = traj.get_x_trot(t).T + np.tile(leg_pos[0], (N, 1)).T
 y = traj.get_y_trot(t) + np.tile(leg_pos[1], (N, 1)).T
-z = traj.get_z_trot(t) + np.tile(leg_pos[2], (N, 1)).T
+z = traj.get_z_trot(t).T + np.tile(leg_pos[2], (N, 1)).T
 leg_state = traj.get_legstate_trot(t)
 
 # desired COP is mean of leg points
