@@ -13,16 +13,14 @@ from src import trajectories as traj
 
 # settings
 create_gif= True   # create GIF of simulation
-max_force = 10      # maximal joint force
+max_force = 5      # maximal joint force
 
-# timing parameters
-#dt = 1./250.
-#p.setTimeStep(dt)
-#tsteps = np.arange(0, 5, dt)
+# timing parameters (at least 250 Hz)
 t_end = 6
-N_steps = 750
+N_steps = 4000
 dt = t_end/N_steps
 tsteps = np.linspace(0, t_end, N_steps)
+
 
 # video parameters
 fps = 12
@@ -84,7 +82,7 @@ def inverse_kinematics(coordinates):
         
         # inverse kinematics calculation, definitions can be found in doc
         B = np.sqrt(y**2 + z**2)
-        A = np.sqrt(B**2 - g**2)# - self.h
+        A = np.sqrt(B**2 - g**2) - h
         gamma = np.arctan(-y/z) - np.arcsin(g/B)
         C = np.sqrt(A**2 + x**2)
         C1 = ( l1**2 - l2**2 + C**2)/(2*C)
@@ -106,7 +104,7 @@ def inverse_kinematics(coordinates):
     
 
 # caluclate leg positions for whole simulation (closed loop!)
-trotPos = traj.get_optimized_trot(tsteps)
+legPos = traj.get_optimized_gait(tsteps)
 
 
 # set up simulation
@@ -115,8 +113,9 @@ try:
 except:
     pass
 p.connect(p.GUI)
-p.setGravity(0,0,-9.8)
+p.setGravity(0,0,-9.81)
 p.setAdditionalSearchPath(pd.getDataPath())
+p.setTimeStep(dt)
 floor = p.loadURDF("plane.urdf")
 robot = p.loadURDF("src/urdf_files/mini_cheetah_no_inertia.urdf", [0,0,0.4])
 
@@ -131,24 +130,43 @@ images = np.zeros((N_v, height, width, 4))
 cnt = 0
 
 
+# Wait until robot reaches initial position (workaround)
+robPos, _ = p.getBasePositionAndOrientation(robot)
+angles = inverse_kinematics(legPos[0])
+set_leg_angles(angles)
+for n in range(100):
+    p.stepSimulation()
+
+# Simulation loop
 print("loop start")
 for n in range(N_steps):
     t = tsteps[n]
     # point camera onto robot
     robPos, _ = p.getBasePositionAndOrientation(robot)
-    p.resetDebugVisualizerCamera(cameraDistance=1,
+    p.resetDebugVisualizerCamera(cameraDistance=0.5,
                                  cameraYaw=50, cameraPitch=-35, 
                                  cameraTargetPosition=robPos)
     # calculate and set position
-    pos = trotPos[n]
+    pos = legPos[n]
     angles = inverse_kinematics(pos)
     set_leg_angles(angles)
     
     # save image every now and then
     if create_gif:
         if(n%(int(N_steps/(t_end*fps))) == 0):
-            viewMatrix = p.computeViewMatrix(robPos, [0.5, 0.2, 0], [0, 0, 1])
-            images[cnt] = p.getCameraImage(width, height, viewMatrix)[2]
+            #viewMatrix = p.computeViewMatrix(
+            #    cameraEyePosition = robPos, 
+            #    cameraTargetPosition = [0.5, 0.2, 0], 
+            #    cameraUpVector = [0, 0, 1]
+            #    )
+            viewMatrix = p.computeViewMatrixFromYawPitchRoll(
+                cameraTargetPosition = robPos,
+                distance = 0.1,
+                yaw = 0,
+                pitch = 0,
+                roll = 0,
+                upAxisIndex = 2)
+            images[cnt] = p.getCameraImage(width, height, viewMatrix=viewMatrix)[2]
             cnt += 1
             cnt = np.min((cnt, N_v-1)) # prevent out of bounds 
         
